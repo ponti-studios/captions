@@ -47,6 +47,9 @@ export function Captions({
   const { said, now } = useCaptions({ id, text, paused, place });
   return (
     <View style={[styles.box, style]} accessibilityLabel={text} accessibilityRole="text">
+      {/* Pinned to the bottom with no height of its own: a Text inside the fixed-height box is laid
+          out to fit it, so once the box filled the newest words were cut off and captions froze. */}
+      <View style={styles.inner}>
       <Text
         style={[
           {
@@ -67,6 +70,7 @@ export function Captions({
         </Text>
         <Text style={{ color: nowColor, fontWeight: nowFontWeight }}>{now}</Text>
       </Text>
+      </View>
       {fadeColor && fadeHeight > 0 ? (
         <View pointerEvents="none" style={styles.fade}>
           {FADE.map((opacity, index) => (
@@ -82,6 +86,7 @@ export function Captions({
 }
 
 const styles = StyleSheet.create({
-  box: { overflow: 'hidden', justifyContent: 'flex-end' },
+  box: { overflow: 'hidden' },
+  inner: { position: 'absolute', left: 0, right: 0, bottom: 0 },
   fade: { position: 'absolute', top: 0, left: 0, right: 0 },
 });
