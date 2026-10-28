@@ -1,19 +1,17 @@
 import { StyleSheet, Text, View, type StyleProp, type TextStyle, type ViewStyle } from 'react-native';
 import { useCaptions } from './useCaptions';
-import type { CaptionPlace } from './core';
+import type { CaptionPlace, CaptionStyle } from './core';
 
-export type CaptionsProps = {
+export type CaptionsProps = CaptionStyle & {
   /** Changes when a new reply starts; restarts the clock. */
   id: string;
   text: string;
   paused?: boolean;
   place?: CaptionPlace | null;
-  color?: string;
-  spokenOpacity?: number;
   /** The screen's background colour. The top fade is bands of it, so it must match. Omit for no fade. */
   fadeColor?: string;
   style?: StyleProp<ViewStyle>;
-  /** Font family, size and line height for the words. */
+  /** Escape hatch: applied last to the text, so it beats the font options above. */
   textStyle?: StyleProp<TextStyle>;
 };
 
@@ -29,23 +27,53 @@ export function Captions({
   text,
   paused,
   place,
+  fontFamily,
+  fontSize = 25,
+  lineHeight,
+  fontWeight,
+  fontStyle,
+  letterSpacing,
+  textAlign,
   color = '#000',
+  spokenColor,
   spokenOpacity = 0.42,
+  nowColor,
+  nowFontWeight,
   fadeColor,
+  fadeHeight = 72,
   style,
   textStyle,
 }: CaptionsProps) {
   const { said, now } = useCaptions({ id, text, paused, place });
   return (
     <View style={[styles.box, style]} accessibilityLabel={text} accessibilityRole="text">
-      <Text style={[{ fontSize: 25, lineHeight: 31, color }, textStyle]}>
-        <Text style={{ opacity: spokenOpacity }}>{said ? `${said} ` : ''}</Text>
-        <Text>{now}</Text>
+      <Text
+        style={[
+          {
+            fontFamily,
+            fontSize,
+            lineHeight: lineHeight ?? Math.round(fontSize * 1.25),
+            fontWeight,
+            fontStyle,
+            letterSpacing,
+            textAlign,
+            color,
+          },
+          textStyle,
+        ]}
+      >
+        <Text style={spokenColor ? { color: spokenColor } : { opacity: spokenOpacity }}>
+          {said ? `${said} ` : ''}
+        </Text>
+        <Text style={{ color: nowColor, fontWeight: nowFontWeight }}>{now}</Text>
       </Text>
-      {fadeColor ? (
+      {fadeColor && fadeHeight > 0 ? (
         <View pointerEvents="none" style={styles.fade}>
           {FADE.map((opacity, index) => (
-            <View key={index} style={{ height: 12, backgroundColor: fadeColor, opacity }} />
+            <View
+              key={index}
+              style={{ height: fadeHeight / FADE.length, backgroundColor: fadeColor, opacity }}
+            />
           ))}
         </View>
       ) : null}

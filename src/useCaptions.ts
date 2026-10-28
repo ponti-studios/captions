@@ -48,8 +48,14 @@ export function useCaptions({
   }
   useEffect(() => {
     if (paused) return;
-    const timer = setInterval(() => setElapsed(value => value + TICK_MS), TICK_MS);
+    // Measure real time instead of counting ticks, so throttled timers (background tabs, a busy
+    // thread) make the captions update less often but never fall behind the audio.
+    const base = elapsed;
+    const startedAt = Date.now();
+    const timer = setInterval(() => setElapsed(base + Date.now() - startedAt), TICK_MS);
     return () => clearInterval(timer);
+    // `elapsed` is deliberately left out: it is only the starting point each time the clock resumes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [paused, id]);
 
   const count = wordsSaid(words.length, place, elapsed - heardAt, elapsed);

@@ -16,6 +16,7 @@
     "prepare": "npm run build",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "demo": "esbuild demo/main.tsx --bundle --outfile=demo/out.js --jsx=automatic --define:process.env.NODE_ENV='\"development\"' --servedir=demo --serve=4173",
     "prepublishOnly": "npm run typecheck && npm test && npm run build"
   },
   "peerDependencies": {
@@ -27,8 +28,13 @@
   },
   "devDependencies": {
     "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@types/react-test-renderer": "^19.3.0",
+    "esbuild": "^0.28.0",
     "react": "^19.0.0",
+    "react-dom": "^19.0.0",
     "react-native": "^0.79.0",
+    "react-test-renderer": "^19.3.1",
     "typescript": "^5.9.0",
     "vitest": "^3.2.0"
   }
