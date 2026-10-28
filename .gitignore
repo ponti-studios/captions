@@ -1,3 +1,5 @@
 node_modules
 dist
 demo/out.js
+example/node_modules
+example/.expo
