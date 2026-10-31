@@ -1,82 +1,226 @@
 import { createRoot } from 'react-dom/client';
 import { useState } from 'react';
-import { Captions } from '../src/react';
-import type { CaptionStyle } from '../src/core';
-import { LOOKS } from './looks';
+import { Field } from '@base-ui/react/field';
+import { Fieldset } from '@base-ui/react/fieldset';
+import { Slider } from '@base-ui/react/slider';
+import { Toggle } from '@base-ui/react/toggle';
+import { ToggleGroup } from '@base-ui/react/toggle-group';
+import { Pause, Play, RotateCcw } from 'lucide-react';
+import { Captions, type CaptionTransition } from '../src/react';
+import { AccountShell } from './account-shell';
 
 const TEXT = 'Okay so here is the thing about captions that follow the audio. The newest word sits at the bottom, the words already said fade back, and the ones not said yet are not drawn at all. Keep talking long enough and the older lines drift up under the fade and slip off the top edge of the box, the way a good subtitle should.';
 
-function Slider({ label, value, min, max, onChange }: { label: string; value: number; min: number; max: number; onChange: (v: number) => void }) {
+const FONTS = {
+  System: '-apple-system, "SF Pro Text", system-ui, sans-serif',
+  Serif: '"Iowan Old Style", "Palatino Linotype", Georgia, serif',
+  Mono: 'ui-monospace, "SF Mono", Menlo, monospace',
+  Rounded: 'ui-rounded, system-ui, sans-serif',
+} as const;
+type FontName = keyof typeof FONTS;
+type Weight = '400' | '600' | '800';
+
+const TRANSITIONS: CaptionTransition[] = ['none', 'fade', 'rise', 'drop', 'blur', 'scale'];
+
+type Style = {
+  transition: CaptionTransition;
+  transitionMs: number;
+  font: FontName;
+  fontSize: number;
+  lineHeight: number;
+  fontWeight: Weight;
+  letterSpacing: number;
+  textAlign: 'left' | 'center' | 'right';
+  fadeHeight: number;
+  color: string;
+  nowColor: string;
+  nowFontWeight: Weight;
+  /** Undefined means said words dim to `spokenOpacity` instead of taking a colour. */
+  spokenColor?: string;
+  spokenOpacity: number;
+  background: string;
+};
+
+const DEFAULTS: Style = {
+  transition: 'fade',
+  transitionMs: 400,
+  font: 'System',
+  fontSize: 28,
+  lineHeight: 38,
+  fontWeight: '400',
+  letterSpacing: 0,
+  textAlign: 'left',
+  fadeHeight: 60,
+  color: '#f3ece2',
+  nowColor: '#ffcf8a',
+  nowFontWeight: '600',
+  spokenColor: undefined,
+  spokenOpacity: 0.38,
+  background: '#1b1714',
+};
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <label className="row"><span>{label}</span>
-      <input type="range" min={min} max={max} value={value} onChange={e => onChange(+e.target.value)} />
-      <b>{value}</b></label>
+    <section className="card" data-account-section>
+      <Fieldset.Root className="section">
+        <Fieldset.Legend className="sectionLabel">{title}</Fieldset.Legend>
+        {children}
+      </Fieldset.Root>
+    </section>
+  );
+}
+
+function Range({ name, min, max, step = 1, value, onChange }: { name: string; min: number; max: number; step?: number; value: number; onChange: (v: number) => void }) {
+  return (
+    <Slider.Root className="field" min={min} max={max} step={step} value={value} onValueChange={onChange}>
+      <Slider.Label>{name}</Slider.Label>
+      <Slider.Control className="sliderControl">
+        <Slider.Track className="sliderTrack">
+          <Slider.Indicator className="sliderIndicator" />
+          <Slider.Thumb className="sliderThumb" aria-label={name} />
+        </Slider.Track>
+      </Slider.Control>
+      <Slider.Value className="fieldValue" />
+    </Slider.Root>
+  );
+}
+
+function Color({ name, value, onChange }: { name: string; value: string; onChange: (v: string) => void }) {
+  return (
+    <Field.Root className="field">
+      <Field.Label>{name}</Field.Label>
+      <Field.Control className="colorInput" type="color" value={value} onChange={e => onChange(e.target.value)} />
+      <span className="fieldValue">{value.toUpperCase()}</span>
+    </Field.Root>
+  );
+}
+
+function Segmented<T extends string>({ name, options, value, onChange }: { name: string; options: readonly T[]; value: T; onChange: (v: T) => void }) {
+  return (
+    <ToggleGroup
+      className="segments"
+      aria-label={name}
+      value={[value]}
+      onValueChange={groupValue => {
+        const next = groupValue[0];
+        if (next !== undefined) onChange(next as T);
+      }}
+    >
+      {options.map(o => (
+        <Toggle key={o} value={o} className="saveButton segment">{o}</Toggle>
+      ))}
+    </ToggleGroup>
+  );
+}
+
+function SegmentRow<T extends string>({ name, options, value, onChange }: { name: string; options: readonly T[]; value: T; onChange: (v: T) => void }) {
+  return (
+    <div className="field fieldWide">
+      <span className="fieldName">{name}</span>
+      <Segmented name={name} options={options} value={value} onChange={onChange} />
+    </div>
   );
 }
 
 function App() {
-  const [i, setI] = useState(0);
+  const [s, setS] = useState<Style>(DEFAULTS);
   const [n, setN] = useState(1);
   const [paused, setPaused] = useState(false);
-  const [over, setOver] = useState<Partial<CaptionStyle>>({});
-  const look = LOOKS[i];
-  const p = { ...look.props, ...over };
-  const size = p.fontSize ?? 25;
-  const light = look.name === 'Minimal';
-  const pick = (k: number) => { setI(k); setOver({}); setN(n + 1); };
-  const set = <K extends keyof CaptionStyle>(k: K, v: CaptionStyle[K]) => setOver({ ...over, [k]: v });
+  // Any change restarts the replay so the new value shows on the words straight away.
+  const set = <K extends keyof Style>(k: K, v: Style[K]) => {
+    setS(prev => ({ ...prev, [k]: v }));
+    setN(prev => prev + 1);
+  };
+  const reset = () => { setS(DEFAULTS); setN(n + 1); };
+
   return (
-    <div className={light ? 'page light' : 'page'} style={{ background: look.page }}>
-      <header>
-        <h1>captions</h1>
-        <p>live captions that follow the audio</p>
-      </header>
-      <main>
-        <section className="card" style={{ background: look.bg }}>
-          <Captions id={'r' + n} text={TEXT} paused={paused} style={{ height: 300 }} {...p} />
-          <div className="bar">
-            <button onClick={() => setPaused(!paused)}>{paused ? '▶ Resume' : '❚❚ Pause'}</button>
-            <button id="restart" onClick={() => setN(n + 1)}>↻ Replay</button>
+    <AccountShell>
+      <div className="intro">
+        <h1>Captions</h1>
+      </div>
+
+      <div className="playground">
+        <div className="previewPane">
+          <div className="screen" style={{ background: s.background }}>
+            <div className="captionsBox">
+              <Captions
+                id={'r' + n}
+                text={TEXT}
+                paused={paused}
+                style={{ height: '100%' }}
+                fontFamily={FONTS[s.font]}
+                fontSize={s.fontSize}
+                lineHeight={s.lineHeight}
+                fontWeight={s.fontWeight}
+                letterSpacing={s.letterSpacing}
+                textAlign={s.textAlign}
+                fadeHeight={s.fadeHeight}
+                color={s.color}
+                nowColor={s.nowColor}
+                nowFontWeight={s.nowFontWeight}
+                spokenColor={s.spokenColor}
+                spokenOpacity={s.spokenOpacity}
+                transition={s.transition}
+                transitionMs={s.transitionMs}
+              />
+            </div>
           </div>
-        </section>
-        <aside className="panel">
-          <div className="chips">
-            {LOOKS.map((l, k) => <button key={l.name} className={k === i ? 'on' : ''} onClick={() => pick(k)}>{l.name}</button>)}
+          <div className="controls">
+            <button className="saveButton primaryButton" type="button" onClick={() => setPaused(!paused)}>
+              {paused ? <Play size={14} aria-hidden="true" /> : <Pause size={14} aria-hidden="true" />}
+              {paused ? 'Resume' : 'Pause'}
+            </button>
+            <button className="saveButton" type="button" onClick={() => setN(n + 1)}>
+              <RotateCcw size={14} aria-hidden="true" />
+              Replay
+            </button>
           </div>
-          <Slider label="Size" min={14} max={56} value={size} onChange={v => setOver({ ...over, fontSize: v, lineHeight: Math.round(v * 1.3) })} />
-          <Slider label="Line height" min={16} max={72} value={p.lineHeight ?? 31} onChange={v => set('lineHeight', v)} />
-          <Slider label="Fade" min={0} max={120} value={p.fadeHeight ?? 36} onChange={v => set('fadeHeight', v)} />
-          <div className="chips small">
-            {['left', 'center', 'right'].map(a => <button key={a} className={p.textAlign === a ? 'on' : ''} onClick={() => set('textAlign', a as CaptionStyle['textAlign'])}>{a}</button>)}
+        </div>
+
+        <div className="formPane">
+      <Section title="Type">
+        <SegmentRow name="Font" options={Object.keys(FONTS) as FontName[]} value={s.font} onChange={v => set('font', v)} />
+        <SegmentRow name="Align" options={['left', 'center', 'right'] as const} value={s.textAlign} onChange={v => set('textAlign', v)} />
+      </Section>
+
+      <Section title="Incoming word">
+        <SegmentRow name="Motion" options={TRANSITIONS} value={s.transition} onChange={v => set('transition', v)} />
+        <Range name="Duration" min={0} max={1200} step={20} value={s.transitionMs} onChange={v => set('transitionMs', v)} />
+      </Section>
+
+      <Section title="Size and spacing">
+        <Range name="Size" min={14} max={56} value={s.fontSize} onChange={v => { setS(prev => ({ ...prev, fontSize: v, lineHeight: Math.round(v * 1.36) })); setN(prev => prev + 1); }} />
+        <Range name="Line height" min={16} max={72} value={s.lineHeight} onChange={v => set('lineHeight', v)} />
+        <Range name="Letter spacing" min={-1} max={2} step={0.1} value={s.letterSpacing} onChange={v => set('letterSpacing', Math.round(v * 10) / 10)} />
+        <Range name="Fade" min={0} max={120} value={s.fadeHeight} onChange={v => set('fadeHeight', v)} />
+      </Section>
+
+      <Section title="Colour">
+        <Color name="Text" value={s.color} onChange={v => set('color', v)} />
+        <Color name="Current word" value={s.nowColor} onChange={v => set('nowColor', v)} />
+        <Field.Root className="field">
+          <Field.Label>Spoken word</Field.Label>
+          <Field.Control className="colorInput" type="color" value={s.spokenColor ?? '#888888'} onChange={e => set('spokenColor', e.target.value)} />
+          <span className="fieldValue">{s.spokenColor ? s.spokenColor.toUpperCase() : 'DIMMED'}</span>
+        </Field.Root>
+        {s.spokenColor ? (
+          <div className="clearRow">
+            <button className="saveButton" type="button" onClick={() => set('spokenColor', undefined)}>Use dimming</button>
           </div>
-          <div className="chips small">
-            {['400', '600', '800'].map(w => <button key={w} className={p.fontWeight === w ? 'on' : ''} onClick={() => set('fontWeight', w as CaptionStyle['fontWeight'])}>{w}</button>)}
-          </div>
-        </aside>
-      </main>
-    </div>
+        ) : null}
+        <Range name="Spoken opacity" min={0} max={1} step={0.01} value={s.spokenOpacity} onChange={v => set('spokenOpacity', v)} />
+        <Color name="Background" value={s.background} onChange={v => set('background', v)} />
+      </Section>
+
+      <Section title="Reset">
+        <div className="controls">
+          <button className="saveButton" type="button" onClick={reset}>Reset to defaults</button>
+        </div>
+      </Section>
+        </div>
+      </div>
+    </AccountShell>
   );
 }
-const css = document.createElement('style');
-css.textContent = `
-*{box-sizing:border-box} body{margin:0;font-family:-apple-system,system-ui,sans-serif}
-.page{min-height:100vh;padding:48px 32px;color:#eee;transition:background .4s}
-.page.light{color:#222}
-header{max-width:960px;margin:0 auto 28px} h1{margin:0;font-size:15px;letter-spacing:.14em;text-transform:uppercase;opacity:.9}
-header p{margin:4px 0 0;opacity:.55;font-size:14px}
-main{max-width:960px;margin:0 auto;display:grid;grid-template-columns:minmax(0,1fr) 260px;gap:24px;align-items:start}
-@media(max-width:760px){main{grid-template-columns:1fr}}
-.card{border-radius:28px;padding:36px 36px 20px;box-shadow:0 30px 80px -20px rgba(0,0,0,.55),0 0 0 1px rgba(255,255,255,.06) inset;transition:background .4s}
-.light .card{box-shadow:0 30px 60px -25px rgba(0,0,0,.25),0 0 0 1px rgba(0,0,0,.06)}
-.bar{display:flex;gap:8px;margin-top:20px;padding-top:16px;border-top:1px solid rgba(128,128,128,.2)}
-.panel{display:grid;gap:18px;padding:20px;border-radius:20px;background:rgba(128,128,128,.12);backdrop-filter:blur(12px)}
-button{font:inherit;font-size:13px;color:inherit;background:rgba(128,128,128,.18);border:0;border-radius:999px;padding:7px 14px;cursor:pointer}
-button:hover{background:rgba(128,128,128,.3)}
-.chips{display:flex;flex-wrap:wrap;gap:6px} .chips button.on{background:#fff;color:#111}
-.light .chips button.on{background:#111;color:#fff}
-.row{display:grid;grid-template-columns:78px 1fr 28px;align-items:center;gap:8px;font-size:12px;opacity:.9}
-.row b{font-weight:500;text-align:right;font-variant-numeric:tabular-nums}
-input[type=range]{width:100%;accent-color:#ff8a4c}
-`;
-document.head.appendChild(css);
+
 createRoot(document.getElementById('root') as HTMLElement).render(<App />);

@@ -1,0 +1,78 @@
+@import 'tailwindcss';
+
+/* The auth UI's light/dark palette as CSS variables, then re-exposed as
+   Tailwind theme tokens via @theme inline so utilities like `bg-auth-card`
+   track the media-query flip at use time instead of build time. */
+
+:root {
+  color-scheme: light;
+  --auth-background: #f6f3ec;
+  --auth-card: #ffffff;
+  --auth-panel: #ebe6da;
+  --auth-text: #1b1a17;
+  --auth-muted: #5e594f;
+  --auth-primary: #2f5d50;
+  --auth-primary-text: #ffffff;
+  --auth-border: #b9b2a3;
+  --auth-danger: #8a2b22;
+  --auth-danger-background: #f6ddd9;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --auth-background: #141310;
+    --auth-card: #1c1a16;
+    --auth-panel: #1c1a16;
+    --auth-text: #edeae2;
+    --auth-muted: #a9a396;
+    --auth-primary: #8fc1ae;
+    --auth-primary-text: #0f1a16;
+    --auth-border: #4a453b;
+    --auth-danger: #ffb3aa;
+    --auth-danger-background: #2e1b18;
+  }
+}
+
+@theme inline {
+  --color-auth-background: var(--auth-background);
+  --color-auth-card: var(--auth-card);
+  --color-auth-panel: var(--auth-panel);
+  --color-auth-text: var(--auth-text);
+  --color-auth-muted: var(--auth-muted);
+  --color-auth-primary: var(--auth-primary);
+  --color-auth-primary-text: var(--auth-primary-text);
+  --color-auth-border: var(--auth-border);
+  --color-auth-danger: var(--auth-danger);
+  --color-auth-danger-background: var(--auth-danger-background);
+  --font-sans: Inter, ui-sans-serif, system-ui, sans-serif;
+  --font-display: Fraunces, Georgia, ui-serif, serif;
+}
+
+@layer base {
+  html,
+  body {
+    min-width: 320px;
+    min-height: 100vh;
+    background: var(--auth-background);
+    color: var(--auth-text);
+  }
+}
+
+@view-transition {
+  navigation: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}
