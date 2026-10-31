@@ -24,7 +24,7 @@
   line-height: 0.98;
 }
 
-.root p {
+.content > p {
   color: #5c5c5c;
 }
 
