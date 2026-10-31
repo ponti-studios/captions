@@ -1,27 +1,19 @@
-import { createElement } from 'react';
-import { act, create } from 'react-test-renderer';
+// @vitest-environment jsdom
+import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useCaptions } from '../src/useCaptions';
-
-(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 const TEXT = Array.from({ length: 40 }, (_, i) => `w${i}`).join(' ');
 
 function run(props: { id: string; paused?: boolean }) {
-  let latest = { count: 0 };
-  const Probe = (p: typeof props) => {
-    latest = useCaptions({ text: TEXT, ...p });
-    return null;
-  };
-  let renderer!: ReturnType<typeof create>;
-  act(() => {
-    renderer = create(createElement(Probe, props));
+  const { result, rerender } = renderHook((p: typeof props) => useCaptions({ text: TEXT, ...p }), {
+    initialProps: props,
   });
   return {
     get count() {
-      return latest.count;
+      return result.current.count;
     },
-    update: (next: typeof props) => act(() => renderer.update(createElement(Probe, next))),
+    update: (next: typeof props) => act(() => rerender(next)),
   };
 }
 
